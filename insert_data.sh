@@ -1,76 +1,62 @@
-#!/bin/bash
+#! /bin/bash
 
-# Script to insert data from courses.csv and students.csv into students database
+if [[ $1 == "test" ]]
+then
+  PSQL="psql --username=postgres --dbname=worldcuptest -t --no-align -c"
+else
+  PSQL="psql --username=freecodecamp --dbname=worldcup -t --no-align -c"
+fi
 
-PSQL="psql -X --username=postgres --dbname=students --no-align --tuples-only -c"
-#This will allow you to query your database from your script. The important parts are the username, dbname, and the -c flag that is for running a single command and exiting. The rest of the flags are for formatting.
-
-cat courses.csv | while IFS="," read MAJOR COURSE
-do
-  if [[ $MAJOR != "major" ]]
-  then
-    # get major_id 
-    MAJOR_ID=$($PSQL "SELECT major_id FROM majors WHERE major='$MAJOR'")
-
-    # if not found
-    if [[ -z $MAJOR_ID ]]
-    then
-      # insert major
-      INSERT_MAJOR_RESULT=$($PSQL "INSERT INTO majors(major) VALUES('$MAJOR')")
-      if [[ $INSERT_MAJOR_RESULT == "INSERT 0 1" ]]
+# Do not change code above this line. Use the PSQL variable above to query your database.
+# loop over games.csv and get team names
+cat games.csv | while IFS="," read YEAR ROUND WINNER OPPONENT WINNER_GOALS OPPONENT_GOALS
+do # do something to each line
+# check winner to see if it exists
+if [[ $WINNER != "winner" ]]
+then
+  #get team id
+  WINNER_ID=$($PSQL "SELECT team_id FROM teams WHERE name='$WINNER'")
+  echo $WINNER_ID
+  # if not found, set team
+  if [[ -z $WINNER_ID ]]
+  then 
+    # insert team
+    INSERT_WINNER_RESULT=$($PSQL "INSERT INTO teams(name) VALUES ('$WINNER')")
+    echo Inserted result:, $INSERT_WINNER_RESULT
+    if [[ $INSERT_WINNER_RESULT == "INSERT 0 1" ]]
       then
-        echo Inserted into majors, $MAJOR
-      fi
+       # log to console and get new team id
+      echo Inserted winner into teams, $WINNER
+      WINNER_ID=$($PSQL "SELECT team_id FROM teams WHERE name='$WINNER'")
 
-      # get new major_id
-      MAJOR_ID=$($PSQL "SELECT major_id FROM majors WHERE major='$MAJOR'")
-    fi
-
-    # get course_id
-    COURSE_ID=$($PSQL "SELECT course_id FROM courses WHERE course='$COURSE'")
-
-    # if not found
-    if [[ -z $COURSE_ID ]]
-    then
-      # insert course
-      INSERT_COURSE_RESULT=$($PSQL "INSERT INTO courses(course) VALUES('$COURSE')")
-      if [[ $INSERT_COURSE_RESULT == "INSERT 0 1" ]]
-      then
-        echo Inserted into courses, $COURSE
-      fi
-
-      # get new course_id
-      COURSE_ID=$($PSQL "SELECT course_id FROM courses WHERE course='$COURSE'")
-    fi
-
-    # insert into majors_courses
-    INSERT_MAJORS_COURSES_RESULT=$($PSQL "INSERT INTO majors_courses(major_id, course_id) VALUES($MAJOR_ID, $COURSE_ID)")
-    if [[ $INSERT_MAJORS_COURSES_RESULT == "INSERT 0 1" ]]
-    then
-      echo Inserted into majors_courses, $MAJOR : $COURSE
     fi
   fi
-done
+fi
+# check opponent to see if it exists
+if [[ $OPPONENT != "opponent" ]]
+then
+  #get team id
+  OPPONENT_ID=$($PSQL "SELECT team_id FROM teams WHERE name='$OPPONENT'")
+  # if not found, set team
+  if [[ -z $OPPONENT_ID ]]
+  then 
+    # insert team
+    INSERT_OPPONENT_RESULT=$($PSQL "INSERT INTO teams(name) VALUES ('$OPPONENT')")
+    if [[ $INSERT_OPPONENT_RESULT == "INSERT 0 1" ]]
+      then 
+      # log to console and get new team id
+      echo Inserted opponent into teams, $OPPONENT
+      #get team id
+      OPPONENT_ID=$($PSQL "SELECT team_id FROM teams WHERE name='$OPPONENT'")
 
-cat students.csv | while IFS="," read FIRST LAST MAJOR GPA
-do
-  if [[ $FIRST != "first_name" ]]
-  then
-    # get major_id
-    MAJOR_ID=$($PSQL "SELECT major_id FROM majors WHERE major='$MAJOR'") 
-
-    # if not found
-    if [[ -z $MAJOR_ID ]]
-    then
-      # set to null
-      MAJOR_ID=null
-    fi
-
-    # insert student
-    INSERT_STUDENT_RESULT=$($PSQL "INSERT INTO students(first_name, last_name, major_id, gpa) VALUES('$FIRST', '$LAST', $MAJOR_ID, $GPA)")
-    if [[ $INSERT_STUDENT_RESULT == "INSERT 0 1" ]]
-    then
-    echo Inserted into students, $FIRST $LAST
     fi
   fi
+fi
+echo winner id: $WINNER_ID opponent id: $OPPONENT_ID
+# enter game results into games table
+if [[ $YEAR != "year" ]] 
+then
+INSERT_GAME_RESULT=$($PSQL "INSERT INTO games(year, round, winner_id, opponent_id, winner_goals, opponent_goals) VALUES ('$YEAR', '$ROUND', '$WINNER_ID', '$OPPONENT_ID', '$WINNER_GOALS', '$OPPONENT_GOALS')")
+echo insert games result: $INSERT_GAME_RESULT
+fi
 done
